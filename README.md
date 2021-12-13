@@ -29,6 +29,6 @@ Note data does NOT contain PII data and (subject to size) could be stored in Git
 
 Sample workouts exported from iFit in `data` directory.
 
-## The Hard Part
+## The Slightly Hard Part
 
-This problem was slightly tricky to solve because of some difficulties in parsing the XML format in the .tcx files. We ended up using the BeautifulSoup library in Python to solve some issues with (likely) mal-formed XML.
+This problem was slightly tricky to solve because of some difficulties in parsing the XML format in the .tcx files. We ended up using the [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/) library in Python to solve some issues with (likely) mal-formed XML.
