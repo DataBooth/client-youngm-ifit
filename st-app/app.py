@@ -41,7 +41,7 @@ DATAFILE_URL = DATAFILE_URL_PATH + DATAFILE_CSV.replace(",", "%2C")
 
 
 FILENAME_TCX = "2021_09_26_17_09_Chamonix_Ride_Part_1,_France.tcx"
-FILEPATH = "../data"
+FILEPATH = "data"
 DATAFILE_TCX = FILEPATH / Path(FILENAME_TCX)
 
 #def ST_APP_CONFIG_TOML = Path().cwd().parent / \"app_secrets.toml\" - TODO: TT to refactor
@@ -62,15 +62,22 @@ def app_sidebar(APP_NAME):
     st.sidebar.markdown(sb.author)
     return sb
 
-def extract_data_from_tcx_with_soup(DATAFILE_TCX, data_cols):
-    with open(DATAFILE_TCX.as_posix(), 'r') as myFile:
+def extract_data_from_tcx_with_soup(datafile, data_cols):
+    with open(datafile.as_posix(), 'r') as myFile:
         soup = BeautifulSoup(myFile, features="lxml-xml")
 
         data = []
+        data_df = pd.DataFrame()
         for item in data_cols:
-            data.append(soup(item))
-        df_xml = pd.DataFrame(data)
-        return df_xml
+            if item == "Time":
+                data = [tag.string for tag in soup(item)]
+            else:
+                data = [float(tag.string) for tag in soup(item)]
+            try:  # temporary hack to drop possibly aggregate value in position zero
+                data_df[item] = data
+            except:
+                data_df[item] = data[1:]
+        return data_df
 
 # @st.cache
 def load_and_cache_data():
@@ -104,33 +111,19 @@ def app_mainscreen(APP_NAME, sb):
 
     # Converting the TCX file into a dataframe
     if tcx_file_name is not None:
-        df_cols = ["DistanceMeters", "Cadence", "Calories", "HeartRateBPM", "Time", "AltitudeMeters", "LongitudeDegrees", "LatitudeDegrees"]
+        df_cols = ["Cadence", "DistanceMeters", "Calories", "Time"]
 
-        df_xml = extract_data_from_tcx_with_soup(DATAFILE_TCX, df_cols)
-        st.write(df_xml)
-
-        try:    
-            df_cols = ["DistanceMeters", "Cadence", "Calories", "HeartRateBPM", "Time", "AltitudeMeters", "LongitudeDegrees", "LatitudeDegrees"]
-            rows = []
-
-            tcx_df = extract_data_from_tcx_with_soup(DATAFILE_TCX, data_cols)
-            tcx_df2 = tcx_df.T
-            tcx_df2.columns = data_cols
-
-            show_raw_xml = st.checkbox("Show raw XML data")
-            if show_raw_xml:
-                st.write(tcx_df2)
-
-        except Exception as e:
-            st.write(e)
+        tcx_df = extract_data_from_tcx_with_soup(DATAFILE_TCX, df_cols)
+        st.write(tcx_df)
 
 
     # MERGING THE TWO
-    final_df = pd.merge(tcx_df2, data_df, on = "Time")
+    final_df = pd.merge(tcx_df, data_df, on = "Time")
+
+    st.write(final_df)
 
     # csv counts in seconds
     # tcx time column is the specific time.
-
 
     # EXPORTING THE DATAFRAME (CSV, XML)
     export_csv = st.checkbox("Export to CSV")
