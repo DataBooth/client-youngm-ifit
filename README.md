@@ -28,3 +28,7 @@ Copy of `iFit.R` code in the `markbulk-ifit-R` repo directory.
 Note data does NOT contain PII data and (subject to size) could be stored in GitHub. 
 
 Sample workouts exported from iFit in `data` directory.
+
+## The Hard Part
+
+This problem was slightly tricky to solve because of some difficulties in parsing the XML format in the .tcx files. We ended up using the BeautifulSoup library in Python to solve some issues with (likely) mal-formed XML.
