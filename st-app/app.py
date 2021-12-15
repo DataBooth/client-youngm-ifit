@@ -69,28 +69,27 @@ def extract_data_from_tcx_with_soup(datafile, data_cols):
         soup = BeautifulSoup(myFile, features="lxml-xml")
 
         data = []
+        agg_data = []
         data_df = pd.DataFrame()
-        for item in data_cols:
+        for item, is_agg in data_cols:
             if item == "Time":
                 data = [tag.string for tag in soup(item)]
             else:
                 data = [float(tag.string) for tag in soup(item)]
-            try:  # temporary hack to drop possibly aggregate value in position zero
-                data_df[item] = data
-            except:
+            if is_agg == True:
+                # For attributes with an aggregate value
+                agg_data.append((item, data[0]))
                 data_df[item] = data[1:]
-        return data_df
+            else:
+                agg_data.append((item, None))
+                data_df[item] = data
+        return data_df, agg_data
 
 def extract_secs_from_timestr(timestr, startingtime):
     dt = pendulum.parse(timestr)
     dts = pendulum.parse(startingtime)
     return dt.diff(dts).in_seconds()
 
-
-# @st.cache
-def load_and_cache_data():
-    data_df = pd.read_feather(CACHED_DATA)   # load cached (downsampled) data
-    return data_df
 
 def app_mainscreen(APP_NAME, sb):
     st.header(APP_NAME + " // " + CLIENT_NAME)
@@ -121,19 +120,19 @@ def app_mainscreen(APP_NAME, sb):
 
     # Converting the TCX file into a dataframe
     if tcx_file_name is not None:
-        df_cols = ["Cadence", "DistanceMeters", "Calories", "Time"]
+        df_cols = [("Time", False), ("DistanceMeters", True), ("Calories", True), ("Cadence", False)]
 
-        tcx_df = extract_data_from_tcx_with_soup(DATAFILE_TCX, df_cols)
+        tcx_df, agg_data = extract_data_from_tcx_with_soup(DATAFILE_TCX, df_cols)
         # Tweaks to the TCX dataframe
         startingtime = tcx_df["Time"].iloc[0]
         tcx_df["ElapsedTimeInSeconds"] = tcx_df["Time"].apply(lambda timestr: extract_secs_from_timestr(timestr, startingtime))
-        st.write(tcx_df)
-
- 
+        #st.write(agg_data)
+        #st.write(tcx_df)
 
     # MERGING THE TWO and allow for missing values
     final_df = pd.merge(tcx_df, data_df, on = "ElapsedTimeInSeconds")
 
+    st.write("Joined CSV/TCX data tables")
     st.write(final_df)
 
     # csv counts in seconds
@@ -142,7 +141,7 @@ def app_mainscreen(APP_NAME, sb):
     # EXPORTING THE DATAFRAME (CSV, XML)
     export_csv = st.checkbox("Export to CSV")
     if export_csv:
-        final_df.to_csv(r'DATAFILE_URL', index = False)
+        final_df.to_csv(DATAFILE_TCX.as_posix().replace('.tcx', '.joined.csv'), index = False)
 
     #export_tcx = st.checkbox("Export to XML")
     #if export_tcx:
