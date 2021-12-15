@@ -12,6 +12,7 @@ dependencies:
   - pandas
   - lxml
   - bs4     # BeautifulSoup
+  - pendulum
   # Jupyter - Lab, Notebook, ipykernel
   - jupyterlab 
   - ipykernel

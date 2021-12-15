@@ -10,13 +10,15 @@ import csv
 from pathlib import Path
 import streamlit as st
 from bs4 import BeautifulSoup
-
+import pendulum
 from PIL import Image
 from IPython.display import display
 
 from databooth.convert_data import set_local_or_remote_data_path, convert_csv_row_to_xml
 
 from databooth.parse_tcx import get_tcx_lap_data, get_tcx_point_data, get_dataframes
+
+
 
 # TODO: Link in read .toml config & secrets
 
@@ -79,6 +81,12 @@ def extract_data_from_tcx_with_soup(datafile, data_cols):
                 data_df[item] = data[1:]
         return data_df
 
+def extract_secs_from_timestr(timestr, startingtime):
+    dt = pendulum.parse(timestr)
+    dts = pendulum.parse(startingtime)
+    return dt.diff(dts).in_seconds()
+
+
 # @st.cache
 def load_and_cache_data():
     data_df = pd.read_feather(CACHED_DATA)   # load cached (downsampled) data
@@ -105,6 +113,8 @@ def app_mainscreen(APP_NAME, sb):
 
     data_df.rename(columns={"Relative Resistance": "RelativeResistance"}, inplace=True)
 
+    data_df["ElapsedTimeInSeconds"] = range(0, len(data_df))
+
     show_raw_csv = st.checkbox("Show raw CSV data")
     if show_raw_csv:
         st.write(data_df)
@@ -114,11 +124,15 @@ def app_mainscreen(APP_NAME, sb):
         df_cols = ["Cadence", "DistanceMeters", "Calories", "Time"]
 
         tcx_df = extract_data_from_tcx_with_soup(DATAFILE_TCX, df_cols)
+        # Tweaks to the TCX dataframe
+        startingtime = tcx_df["Time"].iloc[0]
+        tcx_df["ElapsedTimeInSeconds"] = tcx_df["Time"].apply(lambda timestr: extract_secs_from_timestr(timestr, startingtime))
         st.write(tcx_df)
 
+ 
 
-    # MERGING THE TWO
-    final_df = pd.merge(tcx_df, data_df, on = "Time")
+    # MERGING THE TWO and allow for missing values
+    final_df = pd.merge(tcx_df, data_df, on = "ElapsedTimeInSeconds")
 
     st.write(final_df)
 
